@@ -54,13 +54,16 @@ class ChannelCreator(Bot):
 		if connected_users == 0:
 			self.logger.debug(f'Channel empty, deleting it...')
 			await channel.delete()
-			self.logger.debug(f'Channel "{channel.name}" deleted')
+			self.logger.debug(f'Channel "{channel.name}" deleted from "{channel.guild.name}"')
 			if channel.category is not None:
-				time.sleep(1)
+				category_channels = channel.category.channels
+				while channel in category_channels:
+					time.sleep(0.25)
+					category_channels = channel.category.channels
 				await self.delete_category_if_empty(channel.category)
 			return True
 		else:
-			self.logger.debug(f'Channel "{channel.name}" is not empty')
+			self.logger.debug(f'Channel "{channel.name}" in "{channel.guild.name}" is not empty')
 			self.schedule_channel_check(channel)
 			return False
 
@@ -101,18 +104,29 @@ class ChannelCreator(Bot):
 	async def create_voice_channel(self, guild: Guild, name: str, category_name: str = None):
 		assert guild is not None
 		assert name is not None
+		voice_channel = None
 		if category_name is not None:
 			self.logger.debug(f'Creating "{name}" voice channel in "{guild.name}" under category "{category_name}"')
 			categories_names = [category.name for category in guild.categories]
 			category = await self.create_category(guild, category_name)
 			category_channels_names = [channel.name for channel in category.channels]
-			# TODO: check if channel already exists
-			voice_channel = await guild.create_voice_channel(name, category=category)
+			if name not in category_channels_names:
+				voice_channel = await guild.create_voice_channel(name, category=category)
+				self.logger.debug(f'Voice channel "{name}" created in "{guild.name}"')
+			else:
+				self.logger.debug(f'Voice channel "{name}" already exists in "{guild.name}"')
 		else:
 			self.logger.debug(f'Creating "{name}" voice channel in "{guild.name}"')
-			voice_channel = await guild.create_voice_channel(name)
-		self.created_channels[voice_channel.id] = time.time() + KEEP_ALIVE_TIME
-		self.schedule_channel_check(voice_channel)
+			channels_names = [channel.name for channel in guild.channels if channel.category is None]
+			if name not in channels_names:
+				voice_channel = await guild.create_voice_channel(name)
+				self.logger.debug(f'Voice channel "{name}" created in "{guild.name}"')
+			else:
+				self.logger.debug(f'Voice channel "{name}" already exists in "{guild.name}"')
+
+		if voice_channel is not None:
+			self.created_channels[voice_channel.id] = time.time() + KEEP_ALIVE_TIME
+			self.schedule_channel_check(voice_channel)
 		return voice_channel
 
 
