@@ -83,15 +83,15 @@ class ChannelCreator(Bot):
 		self.logger.debug(f'Creating category "{name}"...')
 		assert guild is not None
 		assert name is not None
-		categories_names = [category.name for category in guild.categories]
-		if name not in categories_names:
+		categories_names = [category.name.upper() for category in guild.categories]
+		if name.upper() not in categories_names:
 			new_category = await guild.create_category(name)
 			self.logger.debug(f'Created "{name}" category in "{guild.name}"')
 			return new_category
 		else:
 			self.logger.warning(f'"{name}" category already exists in "{guild.name}"')
 			for category in guild.categories:
-				if category.name == name:
+				if category.name.upper() == name.upper():
 					return category
 
 	@logger.catch
@@ -146,7 +146,7 @@ async def new_ch(ctx: Context, ch_name: str, *args):
 	author = ctx.author
 	category = None
 	if len(args) > 0:
-		category = args[0]
+		category = ' '.join(args)
 	bot.logger.debug(f'"new_ch {ch_name}" from "{author}" in "{guild}"')
 	bot.logger.debug(f'Creating "{ch_name}" voice channel...')
 	await bot.create_voice_channel(guild, ch_name, category)
